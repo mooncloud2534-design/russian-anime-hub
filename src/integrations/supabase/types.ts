@@ -74,6 +74,41 @@ export type Database = {
         }
         Relationships: []
       }
+      episodes: {
+        Row: {
+          created_at: string | null
+          episode_number: number
+          id: string
+          season_id: string
+          title: string
+          video_url: string
+        }
+        Insert: {
+          created_at?: string | null
+          episode_number: number
+          id?: string
+          season_id: string
+          title: string
+          video_url: string
+        }
+        Update: {
+          created_at?: string | null
+          episode_number?: number
+          id?: string
+          season_id?: string
+          title?: string
+          video_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "episodes_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string | null
@@ -91,6 +126,38 @@ export type Database = {
           id?: string
         }
         Relationships: []
+      }
+      seasons: {
+        Row: {
+          anime_id: string
+          created_at: string | null
+          id: string
+          season_number: number
+          title: string
+        }
+        Insert: {
+          anime_id: string
+          created_at?: string | null
+          id?: string
+          season_number: number
+          title: string
+        }
+        Update: {
+          anime_id?: string
+          created_at?: string | null
+          id?: string
+          season_number?: number
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seasons_anime_id_fkey"
+            columns: ["anime_id"]
+            isOneToOne: false
+            referencedRelation: "anime"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {

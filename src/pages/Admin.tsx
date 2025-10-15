@@ -24,6 +24,20 @@ const Admin = () => {
     image_url: "",
     rating: "",
     category: "",
+  });
+
+  // Season form state
+  const [seasonForm, setSeasonForm] = useState({
+    anime_id: "",
+    season_number: "",
+    title: "",
+  });
+
+  // Episode form state
+  const [episodeForm, setEpisodeForm] = useState({
+    season_id: "",
+    episode_number: "",
+    title: "",
     video_url: "",
   });
 
@@ -37,11 +51,15 @@ const Admin = () => {
   // Lists
   const [animeList, setAnimeList] = useState<any[]>([]);
   const [adList, setAdList] = useState<any[]>([]);
+  const [seasonList, setSeasonList] = useState<any[]>([]);
+  const [episodeList, setEpisodeList] = useState<any[]>([]);
 
   useEffect(() => {
     checkAdmin();
     fetchAnimeList();
     fetchAdList();
+    fetchSeasonList();
+    fetchEpisodeList();
   }, []);
 
   const checkAdmin = async () => {
@@ -87,6 +105,24 @@ const Admin = () => {
     if (data) setAdList(data);
   };
 
+  const fetchSeasonList = async () => {
+    const { data } = await supabase
+      .from("seasons")
+      .select("*, anime(title)")
+      .order("created_at", { ascending: false });
+    
+    if (data) setSeasonList(data);
+  };
+
+  const fetchEpisodeList = async () => {
+    const { data } = await supabase
+      .from("episodes")
+      .select("*, seasons(title, anime(title))")
+      .order("created_at", { ascending: false });
+    
+    if (data) setEpisodeList(data);
+  };
+
   const handleAnimeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -105,7 +141,6 @@ const Admin = () => {
         image_url: "",
         rating: "",
         category: "",
-        video_url: "",
       });
       fetchAnimeList();
     } catch (error: any) {
@@ -170,6 +205,76 @@ const Admin = () => {
     }
   };
 
+  const handleSeasonSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    try {
+      const { error } = await supabase.from("seasons").insert([{
+        ...seasonForm,
+        season_number: parseInt(seasonForm.season_number),
+      }]);
+
+      if (error) throw error;
+
+      toast.success("Сезон добавлен!");
+      setSeasonForm({
+        anime_id: "",
+        season_number: "",
+        title: "",
+      });
+      fetchSeasonList();
+    } catch (error: any) {
+      toast.error(error.message);
+    }
+  };
+
+  const handleEpisodeSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    try {
+      const { error } = await supabase.from("episodes").insert([{
+        ...episodeForm,
+        episode_number: parseInt(episodeForm.episode_number),
+      }]);
+
+      if (error) throw error;
+
+      toast.success("Эпизод добавлен!");
+      setEpisodeForm({
+        season_id: "",
+        episode_number: "",
+        title: "",
+        video_url: "",
+      });
+      fetchEpisodeList();
+    } catch (error: any) {
+      toast.error(error.message);
+    }
+  };
+
+  const handleDeleteSeason = async (id: string) => {
+    try {
+      const { error } = await supabase.from("seasons").delete().eq("id", id);
+      if (error) throw error;
+      toast.success("Сезон удален");
+      fetchSeasonList();
+      fetchEpisodeList();
+    } catch (error: any) {
+      toast.error(error.message);
+    }
+  };
+
+  const handleDeleteEpisode = async (id: string) => {
+    try {
+      const { error } = await supabase.from("episodes").delete().eq("id", id);
+      if (error) throw error;
+      toast.success("Эпизод удален");
+      fetchEpisodeList();
+    } catch (error: any) {
+      toast.error(error.message);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen">
@@ -193,6 +298,8 @@ const Admin = () => {
         <Tabs defaultValue="anime" className="space-y-6">
           <TabsList className="bg-card/50 border-primary/20">
             <TabsTrigger value="anime">Управление Аниме</TabsTrigger>
+            <TabsTrigger value="seasons">Управление Сезонами</TabsTrigger>
+            <TabsTrigger value="episodes">Управление Эпизодами</TabsTrigger>
             <TabsTrigger value="ads">Управление Рекламой</TabsTrigger>
           </TabsList>
 
@@ -261,18 +368,6 @@ const Admin = () => {
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>URL видео (YouTube embed)</Label>
-                    <Input
-                      type="url"
-                      value={animeForm.video_url}
-                      onChange={(e) => setAnimeForm({ ...animeForm, video_url: e.target.value })}
-                      required
-                      placeholder="https://www.youtube.com/embed/..."
-                      className="bg-background/50 border-primary/30"
-                    />
-                  </div>
-
                   <Button type="submit" className="w-full bg-primary">
                     Добавить Аниме
                   </Button>
@@ -306,6 +401,192 @@ const Admin = () => {
                         variant="destructive"
                         size="icon"
                         onClick={() => handleDeleteAnime(anime.id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="seasons" className="space-y-6">
+            <Card className="bg-card/50 backdrop-blur-sm border-primary/20">
+              <CardHeader>
+                <CardTitle>Добавить новый сезон</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSeasonSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Аниме</Label>
+                    <select
+                      value={seasonForm.anime_id}
+                      onChange={(e) => setSeasonForm({ ...seasonForm, anime_id: e.target.value })}
+                      required
+                      className="w-full rounded-md border border-primary/30 bg-background/50 px-3 py-2"
+                    >
+                      <option value="">Выберите аниме</option>
+                      {animeList.map((anime) => (
+                        <option key={anime.id} value={anime.id}>
+                          {anime.title}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Номер сезона</Label>
+                      <Input
+                        type="number"
+                        min="1"
+                        value={seasonForm.season_number}
+                        onChange={(e) => setSeasonForm({ ...seasonForm, season_number: e.target.value })}
+                        required
+                        className="bg-background/50 border-primary/30"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Название сезона</Label>
+                      <Input
+                        value={seasonForm.title}
+                        onChange={(e) => setSeasonForm({ ...seasonForm, title: e.target.value })}
+                        required
+                        placeholder="Например: Первый сезон"
+                        className="bg-background/50 border-primary/30"
+                      />
+                    </div>
+                  </div>
+
+                  <Button type="submit" className="w-full bg-primary">
+                    Добавить Сезон
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-card/50 backdrop-blur-sm border-primary/20">
+              <CardHeader>
+                <CardTitle>Список сезонов ({seasonList.length})</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {seasonList.map((season) => (
+                    <div
+                      key={season.id}
+                      className="flex items-center justify-between p-4 bg-background/30 rounded-lg border border-primary/20"
+                    >
+                      <div>
+                        <h3 className="font-bold">{season.title}</h3>
+                        <p className="text-sm text-muted-foreground">
+                          {season.anime?.title} - Сезон {season.season_number}
+                        </p>
+                      </div>
+                      <Button
+                        variant="destructive"
+                        size="icon"
+                        onClick={() => handleDeleteSeason(season.id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="episodes" className="space-y-6">
+            <Card className="bg-card/50 backdrop-blur-sm border-primary/20">
+              <CardHeader>
+                <CardTitle>Добавить новый эпизод</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleEpisodeSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Сезон</Label>
+                    <select
+                      value={episodeForm.season_id}
+                      onChange={(e) => setEpisodeForm({ ...episodeForm, season_id: e.target.value })}
+                      required
+                      className="w-full rounded-md border border-primary/30 bg-background/50 px-3 py-2"
+                    >
+                      <option value="">Выберите сезон</option>
+                      {seasonList.map((season) => (
+                        <option key={season.id} value={season.id}>
+                          {season.anime?.title} - {season.title}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Номер эпизода</Label>
+                      <Input
+                        type="number"
+                        min="1"
+                        value={episodeForm.episode_number}
+                        onChange={(e) => setEpisodeForm({ ...episodeForm, episode_number: e.target.value })}
+                        required
+                        className="bg-background/50 border-primary/30"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Название эпизода</Label>
+                      <Input
+                        value={episodeForm.title}
+                        onChange={(e) => setEpisodeForm({ ...episodeForm, title: e.target.value })}
+                        required
+                        placeholder="Например: Начало приключения"
+                        className="bg-background/50 border-primary/30"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>URL видео (YouTube embed)</Label>
+                    <Input
+                      type="url"
+                      value={episodeForm.video_url}
+                      onChange={(e) => setEpisodeForm({ ...episodeForm, video_url: e.target.value })}
+                      required
+                      placeholder="https://www.youtube.com/embed/..."
+                      className="bg-background/50 border-primary/30"
+                    />
+                  </div>
+
+                  <Button type="submit" className="w-full bg-primary">
+                    Добавить Эпизод
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-card/50 backdrop-blur-sm border-primary/20">
+              <CardHeader>
+                <CardTitle>Список эпизодов ({episodeList.length})</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {episodeList.map((episode) => (
+                    <div
+                      key={episode.id}
+                      className="flex items-center justify-between p-4 bg-background/30 rounded-lg border border-primary/20"
+                    >
+                      <div>
+                        <h3 className="font-bold">
+                          Эпизод {episode.episode_number}: {episode.title}
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          {episode.seasons?.anime?.title} - {episode.seasons?.title}
+                        </p>
+                      </div>
+                      <Button
+                        variant="destructive"
+                        size="icon"
+                        onClick={() => handleDeleteEpisode(episode.id)}
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
